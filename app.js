@@ -7,7 +7,7 @@ const CART_KEY     = 'bc_cart_v3';
 const FIRST_KEY    = 'bc_first_open_v2';
 const HISTORY_KEY  = 'bc_history_v1';
 const MAX_HISTORY  = 100;
-const APP_VERSION  = '1.0.0';   // satu-satunya sumber versi → ubah di sini saja
+const APP_VERSION  = '1.2.0';   // satu-satunya sumber versi → ubah di sini saja
 
 // ═══════════════════════════════════════════════
 // STATE
@@ -73,11 +73,20 @@ function goTo(id) {
 // ═══════════════════════════════════════════════
 // TESSERACT INIT
 // ═══════════════════════════════════════════════
+const INIT_TIMEOUT = 30000; // 30 detik maksimal unduh OCR
+
 async function initTesseract() {
+  $('init-label').textContent = 'Memuat Tesseract.js…';
+  $('init-fill').style.width = '10%';
+
+  const timer = setTimeout(() => {
+    $('init-label').textContent = 'Unduh OCR lambat — lanjut tanpa OCR';
+    $('init-fill').style.width = '100%';
+    finishInit(false);
+  }, INIT_TIMEOUT);
+
   try {
-    $('init-label').textContent = 'Memuat Tesseract.js…';
-    $('init-fill').style.width = '10%';
-    tessWorker = await Tesseract.createWorker('eng+ind', 1, {
+    tessWorker = await Tesseract.createWorker('eng', 1, {
       logger: m => {
         const map = {
           'loading tesseract core':       ['20%','Memuat core OCR…'],
@@ -89,21 +98,29 @@ async function initTesseract() {
           $('init-fill').style.width  = map[m.status][0];
           $('init-label').textContent = map[m.status][1];
         }
+      },
+      errorHandler: err => {
+        console.error('Worker error:', err);
       }
     });
+    clearTimeout(timer);
     $('init-fill').style.width  = '100%';
     $('init-label').textContent = 'Siap!';
-    tessReady = true;
-    await new Promise(r => setTimeout(r, 300));
-    $('init-overlay').classList.add('off');
+    finishInit(true);
+  } catch(e) {
+    clearTimeout(timer);
+    console.error(e);
+    finishInit(false);
+  }
+}
 
-    // Routing setelah load
+function finishInit(ocrReady) {
+  tessReady = ocrReady;
+  setTimeout(() => {
+    $('init-overlay').classList.add('off');
     renderCart();
     goTo('pg-cart');
-  } catch(e) {
-    $('init-label').textContent = 'Gagal memuat OCR. Refresh halaman.';
-    console.error(e);
-  }
+  }, 300);
 }
 
 // ═══════════════════════════════════════════════
@@ -399,9 +416,9 @@ window.cancelOCR = async () => {
 
 // Re-inisialisasi worker tanpa overlay (dipakai setelah cancelOCR mematikan worker)
 async function reinitTesseract() {
-  if (tessReady || tessWorker) return;
-  try { tessWorker = await Tesseract.createWorker('eng+ind', 1); tessReady = true; }
-  catch(e) { console.error(e); toast('⚠ Gagal menyiapkan OCR — refresh halaman'); }
+  if (tessReady || tessWorker || typeof Tesseract === 'undefined') return;
+  try { tessWorker = await Tesseract.createWorker('eng', 1, { errorHandler: err => console.error('Worker error:', err) }); tessReady = true; }
+  catch(e) { console.error(e); toast('⚠ Gagal menyiapkan OCR'); }
 }
 
 function cropCanvas(srcCtx, vw, vh, x, y, w, h, enhance) {

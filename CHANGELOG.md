@@ -5,6 +5,16 @@ Semua perubahan penting pada proyek **Keranjang Analog** (sebelumnya "BelanjaCat
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-06-27
+### Added
+- UI Claymorphism "Pasar Pagi" — palet hijau segar, font Rubik + Nunito Sans
+- Inisialisasi Tesseract dengan timeout 30 detik
+- Error handler untuk worker Tesseract
+### Changed
+- Bahasa Tesseract dari `eng+ind` menjadi `eng` saja (download lebih ringan)
+### Fixed
+- Bug aplikasi stuck di loading "download engine OCR"
+
 ## [1.0.0] - 2026-06-25 — Rename ke Keranjang Analog
 
 ### Changed
