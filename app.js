@@ -38,10 +38,21 @@ let sessionHistory   = [];      // riwayat sesi
 let itemCounter      = 0;       // auto-name "Item N" per sesi
 
 // load
-try { cart = JSON.parse(localStorage.getItem(CART_KEY) || '[]'); } catch {}
 try {
-  sessionHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-} catch {}
+  const rawCart = JSON.parse(localStorage.getItem(CART_KEY) || '[]');
+  cart = Array.isArray(rawCart) ? rawCart.filter(i =>
+    i && typeof i.id === 'number' && typeof i.name === 'string' &&
+    typeof i.price === 'number' && typeof i.qty === 'number' &&
+    i.price >= 0 && i.qty >= 1
+  ) : [];
+} catch { cart = []; }
+try {
+  const rawHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  sessionHistory = Array.isArray(rawHistory) ? rawHistory.filter(s =>
+    s && typeof s.id === 'string' && /^session_\d+$/.test(s.id) &&
+    typeof s.total === 'number' && Array.isArray(s.items)
+  ) : [];
+} catch { sessionHistory = []; }
 isFirstOpen = !localStorage.getItem(FIRST_KEY);
 
 // ═══════════════════════════════════════════════
@@ -49,7 +60,7 @@ isFirstOpen = !localStorage.getItem(FIRST_KEY);
 // ═══════════════════════════════════════════════
 const $   = id => document.getElementById(id);
 const fmt = n  => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n);
-const esc = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
 function persist() { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch {} }
 
@@ -837,7 +848,7 @@ function renderHistory() {
 
   list.innerHTML = Object.entries(groups).map(([date, sessions]) => `
     <div class="history-date-group">
-      <div class="history-date-label">${date}</div>
+      <div class="history-date-label">${esc(date)}</div>
       ${sessions.map(s => renderHistoryItem(s)).join('')}
     </div>`).join('');
 }
@@ -850,7 +861,8 @@ function renderHistoryItem(s) {
   else if (sisa >= 0) budgetBadge = `<span class="hi-budget-badge ok">Hemat ${fmt(sisa)}</span>`;
   else budgetBadge = `<span class="hi-budget-badge over">Lebih ${fmt(Math.abs(sisa))}</span>`;
 
-  return `<div class="history-item" id="hi-${s.id}" onclick="toggleHistoryItem('${s.id}')">
+  const safeId = String(s.id).replace(/[^a-zA-Z0-9_-]/g, '');
+  return `<div class="history-item" id="hi-${safeId}" onclick="toggleHistoryItem('${safeId}')">
     <div class="hi-top">
       <span class="hi-time">${time}</span>
       <span class="hi-template">${esc(s.templateName)}</span>
@@ -858,12 +870,12 @@ function renderHistoryItem(s) {
     <div class="hi-total">${fmt(s.total)}</div>
     <div class="hi-meta">${s.itemCount} item · ${s.budget > 0 ? 'Budget ' + fmt(s.budget) : 'Tanpa Budget'}</div>
     <div class="hi-budget-row">${budgetBadge}</div>
-    <div class="hi-detail off" id="hi-detail-${s.id}">
+    <div class="hi-detail off" id="hi-detail-${safeId}">
       ${s.items.map(it => `<div class="hi-detail-item">
         <span class="hi-detail-name">${esc(it.name)} ×${it.qty}</span>
         <span class="hi-detail-price">${fmt(it.subtotal)}</span>
       </div>`).join('')}
-      <button class="hi-del-btn" onclick="deleteSession('${s.id}',event)">🗑 Hapus Sesi Ini</button>
+      <button class="hi-del-btn" onclick="deleteSession('${safeId}',event)">🗑 Hapus Sesi Ini</button>
     </div>
   </div>`;
 }
